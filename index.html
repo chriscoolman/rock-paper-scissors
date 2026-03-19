@@ -3,345 +3,464 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>3D Rocket League - Ergonomic Controls</title>
+    <title>AI Rock Paper Scissors - Cyber HUD</title>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Montserrat:wght@400;700&display=swap" rel="stylesheet">
     <style>
-        body { margin: 0; overflow: hidden; background: #050508; font-family: 'Segoe UI', sans-serif; user-select: none; }
-        #ui { position: absolute; top: 0; left: 0; width: 100vw; display: flex; justify-content: space-between; align-items: flex-start; padding: 20px 50px; box-sizing: border-box; pointer-events: none; z-index: 10; }
-        .score-box { font-size: 45px; font-weight: bold; text-shadow: 2px 2px 8px rgba(0,0,0,1); }
-        .score-p1 { color: #4facfe; }
-        .score-p2 { color: #ff0844; }
-        .timer { background: rgba(0,0,0,0.8); padding: 10px 30px; border-radius: 12px; border: 2px solid #333; font-size: 40px; color: white; font-weight: bold; }
-        
-        .controls { position: absolute; bottom: 80px; width: 100vw; text-align: center; font-size: 15px; color: rgba(255,255,255,0.6); pointer-events: none; z-index: 10; text-shadow: 1px 1px 3px black; background: rgba(0,0,0,0.4); padding: 10px 0; }
-        .split-line { position: absolute; top: 0; left: 50vw; width: 6px; height: 100vh; background: #000; transform: translateX(-50%); z-index: 15; box-shadow: 0 0 20px black; }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            background-color: #0b0f19;
+            background-image: 
+                linear-gradient(rgba(0, 229, 255, 0.05) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(0, 229, 255, 0.05) 1px, transparent 1px);
+            background-size: 30px 30px;
+            color: #ffffff;
+            font-family: 'Montserrat', sans-serif;
+            height: 100vh;
+            width: 100vw;
+            overflow: hidden; 
+            display: flex;
+            flex-direction: column;
+        }
 
-        /* Boost Meters */
-        .boost-wrapper { position: absolute; bottom: 20px; width: 300px; height: 30px; background: rgba(0,0,0,0.6); border: 2px solid #555; border-radius: 5px; z-index: 10; overflow: hidden; }
-        #boost-container-p1 { left: 50px; }
-        #boost-container-p2 { right: 50px; }
-        .boost-fill { height: 100%; width: 100%; transition: width 0.1s linear; }
-        #boost-p1 { background: linear-gradient(90deg, #00f2fe 0%, #4facfe 100%); box-shadow: 0 0 10px #4facfe; }
-        #boost-p2 { background: linear-gradient(90deg, #ff0844 0%, #ffb199 100%); box-shadow: 0 0 10px #ff0844; float: right; }
-        .boost-label { position: absolute; width: 100%; text-align: center; line-height: 30px; color: white; font-weight: bold; font-size: 14px; text-shadow: 1px 1px 2px black; }
+        h1, .tech-font { font-family: 'Orbitron', sans-serif; }
+
+        .screen {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            transition: opacity 0.4s ease;
+        }
+        #loading-screen, #game-screen { display: none; opacity: 0; }
+        
+        h1 { font-size: 3.5rem; font-weight: 900; text-transform: uppercase; text-shadow: 0 0 15px rgba(0, 229, 255, 0.8); color: #00e5ff; margin-bottom: 20px; text-align: center; letter-spacing: 2px;}
+        
+        .primary-btn {
+            font-family: 'Orbitron', sans-serif;
+            padding: 20px 60px;
+            font-size: 1.5rem;
+            font-weight: 700;
+            cursor: pointer;
+            background: transparent;
+            color: #00e5ff;
+            border: 2px solid #00e5ff;
+            border-radius: 5px;
+            box-shadow: 0 0 15px rgba(0, 229, 255, 0.4), inset 0 0 15px rgba(0, 229, 255, 0.2);
+            transition: all 0.2s ease;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+        .primary-btn:hover { background: rgba(0, 229, 255, 0.1); box-shadow: 0 0 25px rgba(0, 229, 255, 0.8), inset 0 0 20px rgba(0, 229, 255, 0.5); transform: scale(1.02); }
+        .primary-btn:disabled { border-color: #334155; color: #334155; box-shadow: none; cursor: not-allowed; transform: none; background: transparent; }
+
+        .loader {
+            border: 4px solid #0b0f19;
+            border-top: 4px solid #00e5ff;
+            border-right: 4px solid #00e5ff;
+            border-radius: 50%;
+            width: 70px; height: 70px;
+            animation: spin 0.8s linear infinite;
+            margin-bottom: 20px;
+            box-shadow: 0 0 20px rgba(0, 229, 255, 0.4);
+        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+        .top-stats {
+            width: 100%;
+            background: rgba(11, 15, 25, 0.9);
+            border-bottom: 2px solid #00e5ff;
+            padding: 15px 40px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 1.2rem;
+            box-shadow: 0 5px 20px rgba(0, 229, 255, 0.1);
+            z-index: 10;
+        }
+        .stash-counter { color: #f472b6; font-weight: 700; text-shadow: 0 0 10px rgba(244, 114, 182, 0.5); }
+        
+        #game-screen { justify-content: flex-start; padding-top: 0; }
+        
+        .status-bar {
+            width: 100%; max-width: 1000px;
+            margin-top: 20px;
+            text-align: center;
+        }
+
+        #result-text { font-size: 2.2rem; font-weight: 900; height: 50px; text-transform: uppercase; letter-spacing: 3px; color: #fff;}
+
+        .middle-section {
+            display: flex; flex-direction: row; align-items: center; justify-content: center;
+            gap: 50px; margin: 30px 0; width: 100%; max-width: 1000px; flex-grow: 1;
+        }
+
+        .camera-wrapper {
+            display: flex; flex-direction: column; align-items: center;
+            position: relative; 
+            padding: 10px;
+            border: 1px solid rgba(0, 229, 255, 0.3);
+            background: rgba(0, 229, 255, 0.05);
+            border-radius: 10px;
+        }
+        
+        #camera-flash {
+            position: absolute;
+            top: 50px; 
+            left: 10px;
+            width: calc(100% - 20px);
+            height: calc(100% - 60px);
+            background: white;
+            border-radius: 5px;
+            opacity: 0;
+            pointer-events: none;
+            z-index: 20;
+        }
+        
+        .flash-anim { animation: cameraFlash 0.5s ease-out; }
+        @keyframes cameraFlash { 0% { opacity: 1; } 100% { opacity: 0; } }
+
+        .live-badge {
+            font-family: 'Orbitron', sans-serif;
+            width: 100%; text-align: left;
+            padding: 5px 10px; margin-bottom: 10px;
+            font-size: 1rem; font-weight: 700; color: #00e5ff;
+            border-bottom: 1px solid rgba(0, 229, 255, 0.3);
+            text-transform: uppercase;
+        }
+        
+        #webcam-container canvas {
+            border-radius: 5px;
+            box-shadow: 0 0 30px rgba(0,0,0,0.8);
+            border: 2px solid #334155;
+            width: 350px; height: 350px;
+            object-fit: cover;
+            transition: filter 0.1s ease;
+        }
+
+        .cyber-shader {
+            filter: contrast(1.5) brightness(1.2) hue-rotate(180deg) saturate(2) drop-shadow(0 0 15px rgba(0, 229, 255, 0.6)) !important;
+            border-color: #00e5ff !important;
+        }
+
+        .graph-container {
+            background: rgba(11, 15, 25, 0.8); padding: 25px; border-radius: 10px; width: 350px;
+            border: 1px solid rgba(0, 229, 255, 0.3);
+        }
+        .graph-container h3 { margin-bottom: 20px; color: #94a3b8; text-transform: uppercase; text-align: left; font-size: 1rem; border-bottom: 1px solid #334155; padding-bottom: 10px;}
+        .bar-row { margin-bottom: 15px; display: flex; flex-direction: column; }
+        .bar-header { display: flex; justify-content: space-between; font-size: 0.9rem; font-weight: 700; margin-bottom: 5px; color: #cbd5e1; font-family: 'Orbitron', sans-serif;}
+        .bar-bg { width: 100%; height: 12px; background: #1e293b; overflow: hidden; border-radius: 2px;}
+        .bar-fill { height: 100%; width: 0%; background: #00e5ff; transition: width 0.1s ease, background-color 0.2s ease; box-shadow: 0 0 10px rgba(0, 229, 255, 0.5);}
+
+        .bottom-bar {
+            width: 100%; max-width: 900px; display: flex; flex-direction: column; align-items: center; gap: 25px; margin-bottom: 40px;
+        }
+        .moves-display {
+            display: flex; gap: 80px; width: 100%; justify-content: center;
+            font-size: 1.2rem; color: #64748b; text-transform: uppercase; font-family: 'Orbitron', sans-serif;
+        }
+        .move-slot { display: flex; flex-direction: column; align-items: center; width: 150px; }
+        .move-value { font-size: 2.2rem; color: #ffffff; margin-top: 10px; text-shadow: 0 0 10px rgba(255,255,255,0.3);}
+        
+        .text-win { color: #4ade80 !important; text-shadow: 0 0 20px rgba(74, 222, 128, 0.6); }
+        .text-lose { color: #f87171 !important; text-shadow: 0 0 20px rgba(248, 113, 113, 0.6); }
+        .text-tie { color: #facc15 !important; text-shadow: 0 0 20px rgba(250, 204, 21, 0.6); }
+        .text-loading { color: #facc15 !important; text-shadow: 0 0 20px rgba(250, 204, 21, 0.6); }
+        
     </style>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 </head>
 <body>
 
-    <div id="ui">
-        <div class="score-box score-p1">P1: <span id="s1">0</span></div>
-        <div class="timer" id="time">5:00</div>
-        <div class="score-box score-p2">P2: <span id="s2">0</span></div>
+    <div id="landing-screen" class="screen" style="opacity: 1;">
+        <h1>SYSTEM TERMINAL</h1>
+        <p style="font-size: 1.2rem; color: #94a3b8; margin-bottom: 40px; font-family: 'Orbitron', sans-serif;">AWAITING OPERATOR INPUT</p>
+        <button class="primary-btn" onclick="startGame()">INITIALIZE</button>
     </div>
+
+    <div id="loading-screen" class="screen">
+        <div class="loader"></div>
+        <h2 class="tech-font" style="color: #00e5ff;">ESTABLISHING UPLINK...</h2>
+        <p style="color: #64748b; margin-top: 10px;">Please allow camera access.</p>
+    </div>
+
+    <div id="game-screen" class="screen">
+        
+        <div class="top-stats tech-font">
+            <div>OPERATOR: <span style="color: #00e5ff;">ACTIVE</span></div>
+            <div class="stash-counter">🍬 STASH: <span id="jr-count">50</span> JOLLY RANCHERS</div>
+        </div>
+
+        <div class="status-bar">
+            <div id="result-text" class="tech-font">SYSTEM READY</div>
+        </div>
+
+        <div class="middle-section">
+            
+            <div class="camera-wrapper">
+                <div class="live-badge" id="live-prediction">SYS.VISION // SCANNING</div>
+                <div id="camera-flash"></div> 
+                <div id="webcam-container"></div>
+            </div>
+
+            <div class="graph-container" id="probability-graph"></div>
+
+        </div>
+
+        <div class="bottom-bar">
+            <div class="moves-display">
+                <div class="move-slot">
+                    <span>OPERATOR</span>
+                    <span class="move-value" id="user-move">-</span>
+                </div>
+                <div class="move-slot">
+                    <span>CPU</span>
+                    <span class="move-value" id="comp-move">-</span>
+                </div>
+            </div>
+            <button class="primary-btn" id="shoot-btn" onclick="handleGameButton()">TAKE SNAPSHOT</button>
+        </div>
+
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@latest/dist/tf.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@teachablemachine/image@latest/dist/teachablemachine-image.min.js"></script>
     
-    <div id="boost-container-p1" class="boost-wrapper">
-        <div id="boost-p1" class="boost-fill"></div>
-        <div class="boost-label">BOOST</div>
-    </div>
-    <div id="boost-container-p2" class="boost-wrapper">
-        <div id="boost-p2" class="boost-fill"></div>
-        <div class="boost-label">BOOST</div>
-    </div>
+    <script type="text/javascript">
+        // --- YOUR MODEL URL HERE ---
+        const URL = "https://teachablemachine.withgoogle.com/models/34uVIcG4n/";
 
-    <div class="split-line"></div>
-    <div class="controls">
-        <strong>P1 (Left):</strong> W/A/S/D Drive/Pitch &nbsp;|&nbsp; 'V' Jump &nbsp;|&nbsp; L-SHIFT Boost<br><br>
-        <strong>P2 (Right):</strong> I/J/K/L Drive/Pitch &nbsp;|&nbsp; 'M' Jump &nbsp;|&nbsp; R-SHIFT Boost
-    </div>
-
-<script>
-    // --- SCENE SETUP ---
-    const scene = new THREE.Scene();
-    scene.background = new THREE.Color(0x0a0a10);
-    scene.fog = new THREE.Fog(0x0a0a10, 1500, 7000); 
-
-    const renderer = new THREE.WebGLRenderer({ antialias: true });
-    renderer.setSize(window.innerWidth, window.innerHeight);
-    renderer.setScissorTest(true);
-    document.body.appendChild(renderer.domElement);
-
-    const cam1 = new THREE.PerspectiveCamera(75, (window.innerWidth/2) / window.innerHeight, 10, 10000);
-    const cam2 = new THREE.PerspectiveCamera(75, (window.innerWidth/2) / window.innerHeight, 10, 10000);
-
-    window.addEventListener('resize', () => {
-        let w = window.innerWidth / 2, h = window.innerHeight;
-        renderer.setSize(window.innerWidth, h);
-        cam1.aspect = w / h; cam1.updateProjectionMatrix();
-        cam2.aspect = w / h; cam2.updateProjectionMatrix();
-    });
-
-    // --- LIGHTING ---
-    scene.add(new THREE.AmbientLight(0x444455));
-    const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
-    dirLight.position.set(1000, 3000, 1000);
-    scene.add(dirLight);
-
-    // --- ARENA & WALLS ---
-    const FIELD_W = 6000; const FIELD_L = 8000;
-
-    const gridHelper = new THREE.GridHelper(FIELD_L, 40, 0x444444, 0x111111);
-    scene.add(gridHelper);
-
-    const wallMat = new THREE.MeshBasicMaterial({ color: 0x4facfe, transparent: true, opacity: 0.1, wireframe: true });
-    const wallGeoL = new THREE.PlaneGeometry(FIELD_L, 2000);
-    const wallGeoW = new THREE.PlaneGeometry(FIELD_W, 2000);
-    
-    function buildWall(geo, x, y, z, rotY) {
-        const wall = new THREE.Mesh(geo, wallMat);
-        wall.position.set(x, y, z);
-        wall.rotation.y = rotY;
-        scene.add(wall);
-    }
-    buildWall(wallGeoL, -FIELD_W/2, 1000, 0, Math.PI/2);
-    buildWall(wallGeoL, FIELD_W/2, 1000, 0, -Math.PI/2);
-    buildWall(wallGeoW, 0, 1000, -FIELD_L/2, 0);
-    buildWall(wallGeoW, 0, 1000, FIELD_L/2, Math.PI);
-
-    function createGoal(zPos, color) {
-        const geo = new THREE.BoxGeometry(1600, 700, 200);
-        const mat = new THREE.MeshBasicMaterial({ color: color, transparent: true, opacity: 0.25, wireframe: true });
-        const goal = new THREE.Mesh(geo, mat);
-        goal.position.set(0, 350, zPos);
-        scene.add(goal);
-    }
-    createGoal(-FIELD_L/2, 0x4facfe);
-    createGoal(FIELD_L/2, 0xff0844);
-
-    // --- ENTITIES ---
-    function createCar(color, startZ) {
-        const group = new THREE.Group();
-        group.rotation.order = 'YXZ'; 
+        let model, webcam, maxPredictions;
         
-        const chassisGeo = new THREE.BoxGeometry(140, 40, 240);
-        const chassisMat = new THREE.MeshPhongMaterial({ color: color });
-        const chassis = new THREE.Mesh(chassisGeo, chassisMat);
-        chassis.position.y = 20;
-        group.add(chassis);
-        
-        const cabinGeo = new THREE.BoxGeometry(100, 40, 100);
-        const cabinMat = new THREE.MeshPhongMaterial({ color: 0xdddddd });
-        const cabin = new THREE.Mesh(cabinGeo, cabinMat);
-        cabin.position.set(0, 60, -30);
-        group.add(cabin);
+        // Updated Game Variables
+        let jollyRanchers = 50; 
+        const winReward = 10;
+        const losePenalty = 5;
+        let isFrozen = false; 
 
-        const shieldGeo = new THREE.BoxGeometry(90, 30, 10);
-        const shieldMat = new THREE.MeshPhongMaterial({ color: 0x111111 });
-        const shield = new THREE.Mesh(shieldGeo, shieldMat);
-        shield.position.set(0, 60, 20); 
-        group.add(shield);
-
-        group.position.set(0, 40, startZ);
-        scene.add(group);
-        
-        return {
-            mesh: group,
-            vx: 0, vy: 0, vz: 0,
-            yaw: startZ > 0 ? Math.PI : 0,
-            pitch: 0,
-            isGrounded: true,
-            boost: 100
-        };
-    }
-
-    const p1 = createCar(0x4facfe, -3000);
-    const p2 = createCar(0xff0844, 3000);
-
-    const ball = new THREE.Mesh(
-        new THREE.SphereGeometry(150, 32, 32),
-        new THREE.MeshPhongMaterial({ color: 0xffffff, shininess: 80 })
-    );
-    scene.add(ball);
-    let ballData = { vx: 0, vy: 0, vz: 0 };
-
-    // --- ADVANCED INPUT LOGIC ---
-    const keys = {};
-    window.addEventListener('keydown', e => {
-        keys[e.key.toLowerCase()] = true; // Still captures standard keys like 'w'
-        keys[e.code] = true; // Captures specific hardware keys like 'ShiftLeft'
-    });
-    window.addEventListener('keyup', e => {
-        keys[e.key.toLowerCase()] = false;
-        keys[e.code] = false;
-    });
-
-    // --- PHYSICS & LOGIC ---
-    function updateCar(car, ctrl, uiBoostId) {
-        let isBoosting = keys[ctrl.boost] && car.boost > 0;
-
-        car.vy -= 0.6;
-        car.mesh.position.y += car.vy;
-
-        if (car.mesh.position.y <= 40) {
-            car.mesh.position.y = 40;
-            car.vy = 0;
-            car.isGrounded = true;
-            car.pitch *= 0.8; 
-            if (car.boost < 100) car.boost += 1.5; 
-            
-            if (keys[ctrl.jump]) {
-                car.vy = 16;
-                car.isGrounded = false;
-                keys[ctrl.jump] = false; 
-            }
-        } else {
-            car.isGrounded = false;
+        function switchScreen(hideId, showId) {
+            document.getElementById(hideId).style.opacity = "0";
+            setTimeout(() => {
+                document.getElementById(hideId).style.display = "none";
+                document.getElementById(showId).style.display = "flex";
+                setTimeout(() => document.getElementById(showId).style.opacity = "1", 50);
+            }, 400);
         }
 
-        if (isBoosting) car.boost -= 1;
-        document.getElementById(uiBoostId).style.width = car.boost + '%';
+        async function startGame() {
+            switchScreen('landing-screen', 'loading-screen');
 
-        let drive = 0;
-        let turn = 0;
+            try {
+                const modelURL = URL + "model.json";
+                const metadataURL = URL + "metadata.json";
 
-        if (car.isGrounded) {
-            if (keys[ctrl.fwd]) drive = 2.0;
-            if (keys[ctrl.rev]) drive = -1.5; 
-            if (keys[ctrl.left]) turn = 1;
-            if (keys[ctrl.right]) turn = -1;
+                model = await tmImage.load(modelURL, metadataURL);
+                maxPredictions = model.getTotalClasses();
 
-            if (isBoosting) drive *= 2.0; 
+                const flip = true; 
+                webcam = new tmImage.Webcam(350, 350, flip); 
+                await webcam.setup(); 
+                await webcam.play();
+                window.requestAnimationFrame(loop);
 
-            let speed = Math.sqrt(car.vx**2 + car.vz**2);
-            if (speed > 0.5 || drive !== 0) {
-                let turnDir = drive >= 0 ? 1 : -1;
-                car.yaw += 0.05 * turn * turnDir;
-            }
+                document.getElementById("webcam-container").appendChild(webcam.canvas);
+                
+                let graphHTML = "<h3 class='tech-font'>NEURAL NET CONFIDENCE</h3>";
+                for (let i = 0; i < maxPredictions; i++) {
+                    graphHTML += `
+                        <div class="bar-row">
+                            <div class="bar-header">
+                                <span id="label-${i}">CLASS ${i}</span>
+                                <span id="pct-${i}">0%</span>
+                            </div>
+                            <div class="bar-bg"><div class="bar-fill" id="bar-${i}"></div></div>
+                        </div>
+                    `;
+                }
+                document.getElementById("probability-graph").innerHTML = graphHTML;
 
-            car.vx += Math.sin(car.yaw) * drive;
-            car.vz += Math.cos(car.yaw) * drive;
-            
-        } else {
-            if (keys[ctrl.fwd]) car.pitch -= 0.05; 
-            if (keys[ctrl.rev]) car.pitch += 0.05; 
-            if (keys[ctrl.left]) car.yaw += 0.04;  
-            if (keys[ctrl.right]) car.yaw -= 0.04; 
-            
-            car.pitch = Math.max(-Math.PI/2.5, Math.min(Math.PI/2.5, car.pitch));
-
-            if (isBoosting) {
-                let thrust = 1.2;
-                car.vx += Math.sin(car.yaw) * Math.cos(car.pitch) * thrust;
-                car.vy += Math.sin(car.pitch) * thrust; 
-                car.vz += Math.cos(car.yaw) * Math.cos(car.pitch) * thrust;
+                switchScreen('loading-screen', 'game-screen');
+            } catch (error) {
+                console.error("Error:", error);
+                alert("Failed to load AI. Check your camera permissions.");
             }
         }
 
-        car.mesh.rotation.y = car.yaw;
-        car.mesh.rotation.x = car.pitch;
+        async function loop() {
+            if (!isFrozen) {
+                webcam.update(); 
+                await predict(); 
+            }
+            window.requestAnimationFrame(loop);
+        }
 
-        let friction = car.isGrounded ? 0.95 : 0.98; 
-        car.vx *= friction;
-        car.vz *= friction;
-
-        car.mesh.position.x += car.vx;
-        car.mesh.position.z += car.vz;
-
-        const boundX = FIELD_W/2 - 120;
-        const boundZ = FIELD_L/2 - 120;
-        if (Math.abs(car.mesh.position.x) > boundX) { car.mesh.position.x = Math.sign(car.mesh.position.x) * boundX; car.vx *= -0.5; }
-        if (Math.abs(car.mesh.position.z) > boundZ) { car.mesh.position.z = Math.sign(car.mesh.position.z) * boundZ; car.vz *= -0.5; }
-    }
-
-    function checkCollision(car) {
-        let dx = ball.position.x - car.mesh.position.x;
-        let dy = ball.position.y - car.mesh.position.y;
-        let dz = ball.position.z - car.mesh.position.z;
-        let dist = Math.sqrt(dx*dx + dy*dy + dz*dz) || 0.001;
-        
-        let minDist = 150 + 120; 
-
-        if (dist < minDist) {
-            let overlap = minDist - dist;
-            ball.position.x += (dx/dist) * overlap;
-            ball.position.y += (dy/dist) * overlap;
-            ball.position.z += (dz/dist) * overlap;
-
-            let hitPower = 1.2;
-            ballData.vx += (dx/dist) * 8 + car.vx * hitPower;
-            ballData.vz += (dz/dist) * 8 + car.vz * hitPower;
-            ballData.vy += (dy/dist) * 5 + 6; 
+        async function predict() {
+            const prediction = await model.predict(webcam.canvas);
             
-            car.vx *= 0.8; car.vz *= 0.8;
+            let highestProb = 0;
+            let currentMove = "";
+
+            for (let i = 0; i < maxPredictions; i++) {
+                const p = prediction[i];
+                const pct = Math.round(p.probability * 100);
+                
+                document.getElementById(`label-${i}`).innerText = p.className.toUpperCase();
+                document.getElementById(`pct-${i}`).innerText = pct + "%";
+                
+                const barElement = document.getElementById(`bar-${i}`);
+                barElement.style.width = pct + "%";
+                
+                if (pct > 65) {
+                    barElement.style.backgroundColor = "#00e5ff";
+                    barElement.style.boxShadow = "0 0 10px rgba(0, 229, 255, 0.8)";
+                } else {
+                    barElement.style.backgroundColor = "#334155";
+                    barElement.style.boxShadow = "none";
+                }
+
+                if (p.probability > highestProb) {
+                    highestProb = p.probability;
+                    currentMove = p.className;
+                }
+            }
+
+            const liveBadge = document.getElementById("live-prediction");
+            if (highestProb > 0.65) {
+                liveBadge.innerText = `SYS.VISION // DETECTED: ${currentMove.toUpperCase()}`;
+                liveBadge.style.color = "#00e5ff"; 
+            } else {
+                liveBadge.innerText = "SYS.VISION // SEARCHING...";
+                liveBadge.style.color = "#64748b"; 
+            }
         }
-    }
 
-    let score1 = 0, score2 = 0, matchTime = 300;
-
-    function resetField() {
-        p1.mesh.position.set(0, 40, -3000); p1.vx = 0; p1.vy = 0; p1.vz = 0; p1.yaw = 0; p1.pitch = 0; p1.boost = 100;
-        p2.mesh.position.set(0, 40, 3000); p2.vx = 0; p2.vy = 0; p2.vz = 0; p2.yaw = Math.PI; p2.pitch = 0; p2.boost = 100;
-        ball.position.set(0, 1000, 0); ballData.vx = 0; ballData.vy = 0; ballData.vz = 0;
-        document.getElementById('s1').innerText = score1;
-        document.getElementById('s2').innerText = score2;
-    }
-
-    // --- GAME LOOP ---
-    function animate() {
-        requestAnimationFrame(animate);
-
-        matchTime -= 1/60;
-        if(matchTime < 0) matchTime = 0;
-        let m = Math.floor(matchTime / 60); let s = Math.floor(matchTime % 60);
-        document.getElementById('time').innerText = `${m}:${s < 10 ? '0' : ''}${s}`;
-
-        // Updated Ergonomic Controls Mappings
-        updateCar(p1, { fwd: 'w', rev: 's', left: 'a', right: 'd', jump: 'v', boost: 'ShiftLeft' }, 'boost-p1');
-        updateCar(p2, { fwd: 'i', rev: 'k', left: 'j', right: 'l', jump: 'm', boost: 'ShiftRight' }, 'boost-p2');
-
-        ballData.vy -= 0.4; 
-        ball.position.x += ballData.vx;
-        ball.position.y += ballData.vy;
-        ball.position.z += ballData.vz;
-        ballData.vx *= 0.985; ballData.vz *= 0.985; 
-
-        if (ball.position.y < 150) { 
-            ball.position.y = 150;
-            ballData.vy *= -0.7; 
+        function handleGameButton() {
+            const btn = document.getElementById("shoot-btn");
+            if (btn.innerText === "RESET SENSOR") {
+                resetForNextRound();
+            } else {
+                playTurn();
+            }
         }
 
-        if (Math.abs(ball.position.x) > FIELD_W/2 - 150) {
-            ball.position.x = Math.sign(ball.position.x) * (FIELD_W/2 - 150);
-            ballData.vx *= -0.8;
+        function resetForNextRound() {
+            isFrozen = false;
+            
+            document.querySelector("#webcam-container canvas").classList.remove("cyber-shader");
+            const flashElement = document.getElementById("camera-flash");
+            flashElement.classList.remove("flash-anim");
+            void flashElement.offsetWidth; 
+            
+            document.getElementById("shoot-btn").innerText = "TAKE SNAPSHOT";
+            const resultText = document.getElementById("result-text");
+            resultText.innerText = "SYSTEM READY";
+            resultText.className = "tech-font";
+            document.getElementById("user-move").innerText = "-";
+            document.getElementById("comp-move").innerText = "-";
         }
-        if (Math.abs(ball.position.z) > FIELD_L/2 - 150) {
-            if (Math.abs(ball.position.x) < 800 && ball.position.y < 700) {
-                if (ball.position.z > 0) score1++; else score2++;
-                resetField();
+
+        const delay = ms => new Promise(res => setTimeout(res, ms));
+
+        async function playTurn() {
+            const btn = document.getElementById("shoot-btn");
+            const resultText = document.getElementById("result-text");
+            
+            // Check for Bankrupt state
+            if (jollyRanchers <= 0) {
+                resultText.innerText = "OUT OF JOLLY RANCHERS!";
+                resultText.className = "tech-font text-lose";
                 return;
             }
-            ball.position.z = Math.sign(ball.position.z) * (FIELD_L/2 - 150);
-            ballData.vz *= -0.8;
-        }
 
-        checkCollision(p1);
-        checkCollision(p2);
-
-        function updateCamera(cam, car) {
-            let dx = ball.position.x - car.mesh.position.x;
-            let dz = ball.position.z - car.mesh.position.z;
-            let angleToBall = Math.atan2(dx, dz);
-
-            const CAM_DIST = 1100;
-            const CAM_HEIGHT = 450;
-
-            let targetX = car.mesh.position.x - Math.sin(angleToBall) * CAM_DIST;
-            let targetY = car.mesh.position.y + CAM_HEIGHT;
-            let targetZ = car.mesh.position.z - Math.cos(angleToBall) * CAM_DIST;
+            btn.disabled = true;
+            btn.innerText = "PROCESSING...";
             
-            cam.position.lerp(new THREE.Vector3(targetX, targetY, targetZ), 0.15);
-            cam.lookAt(ball.position);
+            // INSTANT SNAPSHOT
+            document.getElementById("camera-flash").classList.add("flash-anim");
+            await delay(50); 
+            
+            // Freeze feed
+            isFrozen = true; 
+            document.querySelector("#webcam-container canvas").classList.add("cyber-shader");
+
+            // --- SUSPENSE LOADING PHASE ---
+            resultText.className = "tech-font text-loading"; 
+            resultText.innerText = "ANALYZING TARGET.";
+            await delay(500);
+            resultText.innerText = "ANALYZING TARGET..";
+            await delay(500);
+            resultText.innerText = "ANALYZING TARGET...";
+            await delay(500);
+
+            // AI calculates based on the frozen frame
+            const prediction = await model.predict(webcam.canvas);
+            let highestProbability = 0;
+            let userMove = "";
+            
+            for (let i = 0; i < maxPredictions; i++) {
+                if (prediction[i].probability > highestProbability) {
+                    highestProbability = prediction[i].probability;
+                    userMove = prediction[i].className; 
+                }
+            }
+            
+            if(highestProbability < 0.60) {
+                userMove = "Not Sure";
+            }
+
+            const choices = ["Rock", "Paper", "Scissors"];
+            const computerMove = choices[Math.floor(Math.random() * choices.length)];
+            
+            document.getElementById("user-move").innerText = userMove.toUpperCase();
+            document.getElementById("comp-move").innerText = computerMove.toUpperCase();
+            
+            determineWinner(userMove, computerMove);
+            
+            btn.disabled = false;
+            btn.innerText = "RESET SENSOR";
         }
 
-        updateCamera(cam1, p1);
-        updateCamera(cam2, p2);
+        function determineWinner(user, comp) {
+            const u = user.toLowerCase();
+            const c = comp.toLowerCase();
+            const resultText = document.getElementById("result-text");
+            const jrCounter = document.getElementById("jr-count");
+            
+            if (u === "not sure") {
+                resultText.innerText = "ERROR: UNKNOWN SHAPE";
+                resultText.className = "tech-font text-tie";
+                return;
+            }
 
-        let w = window.innerWidth / 2, h = window.innerHeight;
-        renderer.setViewport(0, 0, w, h); renderer.setScissor(0, 0, w, h); renderer.render(scene, cam1);
-        renderer.setViewport(w, 0, w, h); renderer.setScissor(w, 0, w, h); renderer.render(scene, cam2);
-    }
+            if (u === c) {
+                resultText.innerText = "DRAW DETECTED";
+                resultText.className = "tech-font text-tie";
+                return;
+            }
+            
+            if (
+                (u === "rock" && c === "scissors") ||
+                (u === "paper" && c === "rock") ||
+                (u === "scissors" && c === "paper")
+            ) {
+                // Extended Win Text
+                resultText.innerText = `OPERATOR WINS (+${winReward} JOLLY RANCHERS)`;
+                resultText.className = "tech-font text-win";
+                jollyRanchers += winReward;
+            } else if (u === "rock" || u === "paper" || u === "scissors") {
+                // Re-added Penalty and Text
+                resultText.innerText = `SYSTEM WINS (-${losePenalty} JOLLY RANCHERS)`;
+                resultText.className = "tech-font text-lose";
+                jollyRanchers -= losePenalty;
+            }
 
-    resetField();
-    animate();
-</script>
+            // Prevent going below 0
+            if (jollyRanchers < 0) jollyRanchers = 0;
+            
+            // Update the display
+            jrCounter.innerText = jollyRanchers;
+        }
+    </script>
 </body>
 </html>
