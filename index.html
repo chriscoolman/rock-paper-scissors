@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Rock Paper Scissors</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            margin-top: 30px;
+            background-color: #f4f4f9;
+        }
+        #webcam-container canvas {
+            border: 4px solid #333;
+            border-radius: 10px;
+            margin-top: 20px;
+        }
+        button {
+            padding: 12px 24px;
+            font-size: 18px;
+            cursor: pointer;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            margin: 10px;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        #game-ui {
+            display: none; /* Hidden until the webcam starts */
+            margin-top: 20px;
+        }
+        .moves {
+            display: flex;
+            justify-content: center;
+            gap: 40px;
+            font-size: 20px;
+        }
+        #result-text {
+            color: #d9534f;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>AI Rock Paper Scissors</h1>
+    
+    <button type="button" id="start-btn" onclick="init()">1. Start Webcam</button>
+    
+    <div id="webcam-container"></div>
+    <div id="label-container" style="font-size: 14px; color: gray; margin-top: 10px;"></div>
+
+    <div id="game-ui">
+        <h2>Score - You: <span id="user-score">0</span> | Computer: <span id="comp-score">0</span></h2>
+        
+        <button type="button" onclick="playTurn()">2. Shoot!</button>
+        
+        <div class="moves">
+            <p><strong>Your Move:</strong> <span id="user-move">Waiting...</span></p>
+            <p><strong>Computer Move:</strong> <span id="comp-move">Waiting...</span></p>
+        </div>
+        
+        <h1 id="result-text">Press Shoot to play!</h1>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@latest/dist/tf.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@teachablemachine/image@latest/dist/teachablemachine-image.min.js"></script>
+    
+    <script type="text/javascript">
+        const URL = "https://teachablemachine.withgoogle.com/models/34uVIcG4n/";
+
+        let model, webcam, labelContainer, maxPredictions;
+        let userScore = 0;
+        let computerScore = 0;
+
+        async function init() {
+            const modelURL = URL + "model.json";
+            const metadataURL = URL + "metadata.json";
+
+            model = await tmImage.load(modelURL, metadataURL);
+            maxPredictions = model.getTotalClasses();
+
+            const flip = true; 
+            webcam = new tmImage.Webcam(300, 300, flip); // Increased size a bit
+            await webcam.setup(); 
+            await webcam.play();
+            window.requestAnimationFrame(loop);
+
+            document.getElementById("webcam-container").appendChild(webcam.canvas);
+            
+            labelContainer = document.getElementById("label-container");
+            for (let i = 0; i < maxPredictions; i++) { 
+                labelContainer.appendChild(document.createElement("div"));
+            }
+
+            // Hide the start button and show the game UI once loaded
+            document.getElementById("start-btn").style.display = "none";
+            document.getElementById("game-ui").style.display = "block";
+        }
+
+        async function loop() {
+            webcam.update(); 
+            await predict(); // Keep updating the raw data in the background
+            window.requestAnimationFrame(loop);
+        }
+
+        async function predict() {
+            const prediction = await model.predict(webcam.canvas);
+            for (let i = 0; i < maxPredictions; i++) {
+                const classPrediction = prediction[i].className + ": " + prediction[i].probability.toFixed(2);
+                labelContainer.childNodes[i].innerHTML = classPrediction;
+            }
+        }
+
+        // --- NEW GAME LOGIC ---
+        async function playTurn() {
+            const prediction = await model.predict(webcam.canvas);
+            
+            let highestProbability = 0;
+            let userMove = "";
+            
+            // Find what the AI thinks you are holding up
+            for (let i = 0; i < maxPredictions; i++) {
+                if (prediction[i].probability > highestProbability) {
+                    highestProbability = prediction[i].probability;
+                    userMove = prediction[i].className; 
+                }
+            }
+            
+            const choices = ["Rock", "Paper", "Scissors"];
+            const computerMove = choices[Math.floor(Math.random() * choices.length)];
+            
+            document.getElementById("user-move").innerText = userMove;
+            document.getElementById("comp-move").innerText = computerMove;
+            
+            determineWinner(userMove, computerMove);
+        }
+
+        function determineWinner(user, comp) {
+            // Convert to lowercase just in case you capitalized your Teachable Machine labels differently
+            const u = user.toLowerCase();
+            const c = comp.toLowerCase();
+            const resultText = document.getElementById("result-text");
+            
+            if (u === c) {
+                resultText.innerText = "It's a Tie!";
+                return;
+            }
+            
+            if (
+                (u === "rock" && c === "scissors") ||
+                (u === "paper" && c === "rock") ||
+                (u === "scissors" && c === "paper")
+            ) {
+                resultText.innerText = "You Win!";
+                userScore++;
+                document.getElementById("user-score").innerText = userScore;
+            } else if (u === "rock" || u === "paper" || u === "scissors") {
+                resultText.innerText = "Computer Wins!";
+                computerScore++;
+                document.getElementById("comp-score").innerText = computerScore;
+            } else {
+                resultText.innerText = "Error: I didn't see Rock, Paper, or Scissors!";
+            }
+        }
+    </script>
+</body>
+</html>
