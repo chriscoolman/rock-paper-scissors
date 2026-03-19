@@ -3,169 +3,345 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AI Rock Paper Scissors</title>
+    <title>3D Rocket League - Ergonomic Controls</title>
     <style>
-        body {
-            font-family: Arial, sans-serif;
-            text-align: center;
-            margin-top: 30px;
-            background-color: #f4f4f9;
-        }
-        #webcam-container canvas {
-            border: 4px solid #333;
-            border-radius: 10px;
-            margin-top: 20px;
-        }
-        button {
-            padding: 12px 24px;
-            font-size: 18px;
-            cursor: pointer;
-            background-color: #007bff;
-            color: white;
-            border: none;
-            border-radius: 5px;
-            margin: 10px;
-        }
-        button:hover {
-            background-color: #0056b3;
-        }
-        #game-ui {
-            display: none; /* Hidden until the webcam starts */
-            margin-top: 20px;
-        }
-        .moves {
-            display: flex;
-            justify-content: center;
-            gap: 40px;
-            font-size: 20px;
-        }
-        #result-text {
-            color: #d9534f;
-        }
+        body { margin: 0; overflow: hidden; background: #050508; font-family: 'Segoe UI', sans-serif; user-select: none; }
+        #ui { position: absolute; top: 0; left: 0; width: 100vw; display: flex; justify-content: space-between; align-items: flex-start; padding: 20px 50px; box-sizing: border-box; pointer-events: none; z-index: 10; }
+        .score-box { font-size: 45px; font-weight: bold; text-shadow: 2px 2px 8px rgba(0,0,0,1); }
+        .score-p1 { color: #4facfe; }
+        .score-p2 { color: #ff0844; }
+        .timer { background: rgba(0,0,0,0.8); padding: 10px 30px; border-radius: 12px; border: 2px solid #333; font-size: 40px; color: white; font-weight: bold; }
+        
+        .controls { position: absolute; bottom: 80px; width: 100vw; text-align: center; font-size: 15px; color: rgba(255,255,255,0.6); pointer-events: none; z-index: 10; text-shadow: 1px 1px 3px black; background: rgba(0,0,0,0.4); padding: 10px 0; }
+        .split-line { position: absolute; top: 0; left: 50vw; width: 6px; height: 100vh; background: #000; transform: translateX(-50%); z-index: 15; box-shadow: 0 0 20px black; }
+
+        /* Boost Meters */
+        .boost-wrapper { position: absolute; bottom: 20px; width: 300px; height: 30px; background: rgba(0,0,0,0.6); border: 2px solid #555; border-radius: 5px; z-index: 10; overflow: hidden; }
+        #boost-container-p1 { left: 50px; }
+        #boost-container-p2 { right: 50px; }
+        .boost-fill { height: 100%; width: 100%; transition: width 0.1s linear; }
+        #boost-p1 { background: linear-gradient(90deg, #00f2fe 0%, #4facfe 100%); box-shadow: 0 0 10px #4facfe; }
+        #boost-p2 { background: linear-gradient(90deg, #ff0844 0%, #ffb199 100%); box-shadow: 0 0 10px #ff0844; float: right; }
+        .boost-label { position: absolute; width: 100%; text-align: center; line-height: 30px; color: white; font-weight: bold; font-size: 14px; text-shadow: 1px 1px 2px black; }
     </style>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 </head>
 <body>
 
-    <h1>AI Rock Paper Scissors</h1>
+    <div id="ui">
+        <div class="score-box score-p1">P1: <span id="s1">0</span></div>
+        <div class="timer" id="time">5:00</div>
+        <div class="score-box score-p2">P2: <span id="s2">0</span></div>
+    </div>
     
-    <button type="button" id="start-btn" onclick="init()">1. Start Webcam</button>
-    
-    <div id="webcam-container"></div>
-    <div id="label-container" style="font-size: 14px; color: gray; margin-top: 10px;"></div>
-
-    <div id="game-ui">
-        <h2>Score - You: <span id="user-score">0</span> | Computer: <span id="comp-score">0</span></h2>
-        
-        <button type="button" onclick="playTurn()">2. Shoot!</button>
-        
-        <div class="moves">
-            <p><strong>Your Move:</strong> <span id="user-move">Waiting...</span></p>
-            <p><strong>Computer Move:</strong> <span id="comp-move">Waiting...</span></p>
-        </div>
-        
-        <h1 id="result-text">Press Shoot to play!</h1>
+    <div id="boost-container-p1" class="boost-wrapper">
+        <div id="boost-p1" class="boost-fill"></div>
+        <div class="boost-label">BOOST</div>
+    </div>
+    <div id="boost-container-p2" class="boost-wrapper">
+        <div id="boost-p2" class="boost-fill"></div>
+        <div class="boost-label">BOOST</div>
     </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@latest/dist/tf.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@teachablemachine/image@latest/dist/teachablemachine-image.min.js"></script>
+    <div class="split-line"></div>
+    <div class="controls">
+        <strong>P1 (Left):</strong> W/A/S/D Drive/Pitch &nbsp;|&nbsp; 'V' Jump &nbsp;|&nbsp; L-SHIFT Boost<br><br>
+        <strong>P2 (Right):</strong> I/J/K/L Drive/Pitch &nbsp;|&nbsp; 'M' Jump &nbsp;|&nbsp; R-SHIFT Boost
+    </div>
+
+<script>
+    // --- SCENE SETUP ---
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x0a0a10);
+    scene.fog = new THREE.Fog(0x0a0a10, 1500, 7000); 
+
+    const renderer = new THREE.WebGLRenderer({ antialias: true });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.setScissorTest(true);
+    document.body.appendChild(renderer.domElement);
+
+    const cam1 = new THREE.PerspectiveCamera(75, (window.innerWidth/2) / window.innerHeight, 10, 10000);
+    const cam2 = new THREE.PerspectiveCamera(75, (window.innerWidth/2) / window.innerHeight, 10, 10000);
+
+    window.addEventListener('resize', () => {
+        let w = window.innerWidth / 2, h = window.innerHeight;
+        renderer.setSize(window.innerWidth, h);
+        cam1.aspect = w / h; cam1.updateProjectionMatrix();
+        cam2.aspect = w / h; cam2.updateProjectionMatrix();
+    });
+
+    // --- LIGHTING ---
+    scene.add(new THREE.AmbientLight(0x444455));
+    const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
+    dirLight.position.set(1000, 3000, 1000);
+    scene.add(dirLight);
+
+    // --- ARENA & WALLS ---
+    const FIELD_W = 6000; const FIELD_L = 8000;
+
+    const gridHelper = new THREE.GridHelper(FIELD_L, 40, 0x444444, 0x111111);
+    scene.add(gridHelper);
+
+    const wallMat = new THREE.MeshBasicMaterial({ color: 0x4facfe, transparent: true, opacity: 0.1, wireframe: true });
+    const wallGeoL = new THREE.PlaneGeometry(FIELD_L, 2000);
+    const wallGeoW = new THREE.PlaneGeometry(FIELD_W, 2000);
     
-    <script type="text/javascript">
-        const URL = "https://teachablemachine.withgoogle.com/models/34uVIcG4n/";
+    function buildWall(geo, x, y, z, rotY) {
+        const wall = new THREE.Mesh(geo, wallMat);
+        wall.position.set(x, y, z);
+        wall.rotation.y = rotY;
+        scene.add(wall);
+    }
+    buildWall(wallGeoL, -FIELD_W/2, 1000, 0, Math.PI/2);
+    buildWall(wallGeoL, FIELD_W/2, 1000, 0, -Math.PI/2);
+    buildWall(wallGeoW, 0, 1000, -FIELD_L/2, 0);
+    buildWall(wallGeoW, 0, 1000, FIELD_L/2, Math.PI);
 
-        let model, webcam, labelContainer, maxPredictions;
-        let userScore = 0;
-        let computerScore = 0;
+    function createGoal(zPos, color) {
+        const geo = new THREE.BoxGeometry(1600, 700, 200);
+        const mat = new THREE.MeshBasicMaterial({ color: color, transparent: true, opacity: 0.25, wireframe: true });
+        const goal = new THREE.Mesh(geo, mat);
+        goal.position.set(0, 350, zPos);
+        scene.add(goal);
+    }
+    createGoal(-FIELD_L/2, 0x4facfe);
+    createGoal(FIELD_L/2, 0xff0844);
 
-        async function init() {
-            const modelURL = URL + "model.json";
-            const metadataURL = URL + "metadata.json";
+    // --- ENTITIES ---
+    function createCar(color, startZ) {
+        const group = new THREE.Group();
+        group.rotation.order = 'YXZ'; 
+        
+        const chassisGeo = new THREE.BoxGeometry(140, 40, 240);
+        const chassisMat = new THREE.MeshPhongMaterial({ color: color });
+        const chassis = new THREE.Mesh(chassisGeo, chassisMat);
+        chassis.position.y = 20;
+        group.add(chassis);
+        
+        const cabinGeo = new THREE.BoxGeometry(100, 40, 100);
+        const cabinMat = new THREE.MeshPhongMaterial({ color: 0xdddddd });
+        const cabin = new THREE.Mesh(cabinGeo, cabinMat);
+        cabin.position.set(0, 60, -30);
+        group.add(cabin);
 
-            model = await tmImage.load(modelURL, metadataURL);
-            maxPredictions = model.getTotalClasses();
+        const shieldGeo = new THREE.BoxGeometry(90, 30, 10);
+        const shieldMat = new THREE.MeshPhongMaterial({ color: 0x111111 });
+        const shield = new THREE.Mesh(shieldGeo, shieldMat);
+        shield.position.set(0, 60, 20); 
+        group.add(shield);
 
-            const flip = true; 
-            webcam = new tmImage.Webcam(300, 300, flip); // Increased size a bit
-            await webcam.setup(); 
-            await webcam.play();
-            window.requestAnimationFrame(loop);
+        group.position.set(0, 40, startZ);
+        scene.add(group);
+        
+        return {
+            mesh: group,
+            vx: 0, vy: 0, vz: 0,
+            yaw: startZ > 0 ? Math.PI : 0,
+            pitch: 0,
+            isGrounded: true,
+            boost: 100
+        };
+    }
 
-            document.getElementById("webcam-container").appendChild(webcam.canvas);
+    const p1 = createCar(0x4facfe, -3000);
+    const p2 = createCar(0xff0844, 3000);
+
+    const ball = new THREE.Mesh(
+        new THREE.SphereGeometry(150, 32, 32),
+        new THREE.MeshPhongMaterial({ color: 0xffffff, shininess: 80 })
+    );
+    scene.add(ball);
+    let ballData = { vx: 0, vy: 0, vz: 0 };
+
+    // --- ADVANCED INPUT LOGIC ---
+    const keys = {};
+    window.addEventListener('keydown', e => {
+        keys[e.key.toLowerCase()] = true; // Still captures standard keys like 'w'
+        keys[e.code] = true; // Captures specific hardware keys like 'ShiftLeft'
+    });
+    window.addEventListener('keyup', e => {
+        keys[e.key.toLowerCase()] = false;
+        keys[e.code] = false;
+    });
+
+    // --- PHYSICS & LOGIC ---
+    function updateCar(car, ctrl, uiBoostId) {
+        let isBoosting = keys[ctrl.boost] && car.boost > 0;
+
+        car.vy -= 0.6;
+        car.mesh.position.y += car.vy;
+
+        if (car.mesh.position.y <= 40) {
+            car.mesh.position.y = 40;
+            car.vy = 0;
+            car.isGrounded = true;
+            car.pitch *= 0.8; 
+            if (car.boost < 100) car.boost += 1.5; 
             
-            labelContainer = document.getElementById("label-container");
-            for (let i = 0; i < maxPredictions; i++) { 
-                labelContainer.appendChild(document.createElement("div"));
+            if (keys[ctrl.jump]) {
+                car.vy = 16;
+                car.isGrounded = false;
+                keys[ctrl.jump] = false; 
+            }
+        } else {
+            car.isGrounded = false;
+        }
+
+        if (isBoosting) car.boost -= 1;
+        document.getElementById(uiBoostId).style.width = car.boost + '%';
+
+        let drive = 0;
+        let turn = 0;
+
+        if (car.isGrounded) {
+            if (keys[ctrl.fwd]) drive = 2.0;
+            if (keys[ctrl.rev]) drive = -1.5; 
+            if (keys[ctrl.left]) turn = 1;
+            if (keys[ctrl.right]) turn = -1;
+
+            if (isBoosting) drive *= 2.0; 
+
+            let speed = Math.sqrt(car.vx**2 + car.vz**2);
+            if (speed > 0.5 || drive !== 0) {
+                let turnDir = drive >= 0 ? 1 : -1;
+                car.yaw += 0.05 * turn * turnDir;
             }
 
-            // Hide the start button and show the game UI once loaded
-            document.getElementById("start-btn").style.display = "none";
-            document.getElementById("game-ui").style.display = "block";
-        }
+            car.vx += Math.sin(car.yaw) * drive;
+            car.vz += Math.cos(car.yaw) * drive;
+            
+        } else {
+            if (keys[ctrl.fwd]) car.pitch -= 0.05; 
+            if (keys[ctrl.rev]) car.pitch += 0.05; 
+            if (keys[ctrl.left]) car.yaw += 0.04;  
+            if (keys[ctrl.right]) car.yaw -= 0.04; 
+            
+            car.pitch = Math.max(-Math.PI/2.5, Math.min(Math.PI/2.5, car.pitch));
 
-        async function loop() {
-            webcam.update(); 
-            await predict(); // Keep updating the raw data in the background
-            window.requestAnimationFrame(loop);
-        }
-
-        async function predict() {
-            const prediction = await model.predict(webcam.canvas);
-            for (let i = 0; i < maxPredictions; i++) {
-                const classPrediction = prediction[i].className + ": " + prediction[i].probability.toFixed(2);
-                labelContainer.childNodes[i].innerHTML = classPrediction;
+            if (isBoosting) {
+                let thrust = 1.2;
+                car.vx += Math.sin(car.yaw) * Math.cos(car.pitch) * thrust;
+                car.vy += Math.sin(car.pitch) * thrust; 
+                car.vz += Math.cos(car.yaw) * Math.cos(car.pitch) * thrust;
             }
         }
 
-        // --- NEW GAME LOGIC ---
-        async function playTurn() {
-            const prediction = await model.predict(webcam.canvas);
+        car.mesh.rotation.y = car.yaw;
+        car.mesh.rotation.x = car.pitch;
+
+        let friction = car.isGrounded ? 0.95 : 0.98; 
+        car.vx *= friction;
+        car.vz *= friction;
+
+        car.mesh.position.x += car.vx;
+        car.mesh.position.z += car.vz;
+
+        const boundX = FIELD_W/2 - 120;
+        const boundZ = FIELD_L/2 - 120;
+        if (Math.abs(car.mesh.position.x) > boundX) { car.mesh.position.x = Math.sign(car.mesh.position.x) * boundX; car.vx *= -0.5; }
+        if (Math.abs(car.mesh.position.z) > boundZ) { car.mesh.position.z = Math.sign(car.mesh.position.z) * boundZ; car.vz *= -0.5; }
+    }
+
+    function checkCollision(car) {
+        let dx = ball.position.x - car.mesh.position.x;
+        let dy = ball.position.y - car.mesh.position.y;
+        let dz = ball.position.z - car.mesh.position.z;
+        let dist = Math.sqrt(dx*dx + dy*dy + dz*dz) || 0.001;
+        
+        let minDist = 150 + 120; 
+
+        if (dist < minDist) {
+            let overlap = minDist - dist;
+            ball.position.x += (dx/dist) * overlap;
+            ball.position.y += (dy/dist) * overlap;
+            ball.position.z += (dz/dist) * overlap;
+
+            let hitPower = 1.2;
+            ballData.vx += (dx/dist) * 8 + car.vx * hitPower;
+            ballData.vz += (dz/dist) * 8 + car.vz * hitPower;
+            ballData.vy += (dy/dist) * 5 + 6; 
             
-            let highestProbability = 0;
-            let userMove = "";
-            
-            // Find what the AI thinks you are holding up
-            for (let i = 0; i < maxPredictions; i++) {
-                if (prediction[i].probability > highestProbability) {
-                    highestProbability = prediction[i].probability;
-                    userMove = prediction[i].className; 
-                }
-            }
-            
-            const choices = ["Rock", "Paper", "Scissors"];
-            const computerMove = choices[Math.floor(Math.random() * choices.length)];
-            
-            document.getElementById("user-move").innerText = userMove;
-            document.getElementById("comp-move").innerText = computerMove;
-            
-            determineWinner(userMove, computerMove);
+            car.vx *= 0.8; car.vz *= 0.8;
+        }
+    }
+
+    let score1 = 0, score2 = 0, matchTime = 300;
+
+    function resetField() {
+        p1.mesh.position.set(0, 40, -3000); p1.vx = 0; p1.vy = 0; p1.vz = 0; p1.yaw = 0; p1.pitch = 0; p1.boost = 100;
+        p2.mesh.position.set(0, 40, 3000); p2.vx = 0; p2.vy = 0; p2.vz = 0; p2.yaw = Math.PI; p2.pitch = 0; p2.boost = 100;
+        ball.position.set(0, 1000, 0); ballData.vx = 0; ballData.vy = 0; ballData.vz = 0;
+        document.getElementById('s1').innerText = score1;
+        document.getElementById('s2').innerText = score2;
+    }
+
+    // --- GAME LOOP ---
+    function animate() {
+        requestAnimationFrame(animate);
+
+        matchTime -= 1/60;
+        if(matchTime < 0) matchTime = 0;
+        let m = Math.floor(matchTime / 60); let s = Math.floor(matchTime % 60);
+        document.getElementById('time').innerText = `${m}:${s < 10 ? '0' : ''}${s}`;
+
+        // Updated Ergonomic Controls Mappings
+        updateCar(p1, { fwd: 'w', rev: 's', left: 'a', right: 'd', jump: 'v', boost: 'ShiftLeft' }, 'boost-p1');
+        updateCar(p2, { fwd: 'i', rev: 'k', left: 'j', right: 'l', jump: 'm', boost: 'ShiftRight' }, 'boost-p2');
+
+        ballData.vy -= 0.4; 
+        ball.position.x += ballData.vx;
+        ball.position.y += ballData.vy;
+        ball.position.z += ballData.vz;
+        ballData.vx *= 0.985; ballData.vz *= 0.985; 
+
+        if (ball.position.y < 150) { 
+            ball.position.y = 150;
+            ballData.vy *= -0.7; 
         }
 
-        function determineWinner(user, comp) {
-            // Convert to lowercase just in case you capitalized your Teachable Machine labels differently
-            const u = user.toLowerCase();
-            const c = comp.toLowerCase();
-            const resultText = document.getElementById("result-text");
-            
-            if (u === c) {
-                resultText.innerText = "It's a Tie!";
+        if (Math.abs(ball.position.x) > FIELD_W/2 - 150) {
+            ball.position.x = Math.sign(ball.position.x) * (FIELD_W/2 - 150);
+            ballData.vx *= -0.8;
+        }
+        if (Math.abs(ball.position.z) > FIELD_L/2 - 150) {
+            if (Math.abs(ball.position.x) < 800 && ball.position.y < 700) {
+                if (ball.position.z > 0) score1++; else score2++;
+                resetField();
                 return;
             }
-            
-            if (
-                (u === "rock" && c === "scissors") ||
-                (u === "paper" && c === "rock") ||
-                (u === "scissors" && c === "paper")
-            ) {
-                resultText.innerText = "You Win!";
-                userScore++;
-                document.getElementById("user-score").innerText = userScore;
-            } else if (u === "rock" || u === "paper" || u === "scissors") {
-                resultText.innerText = "Computer Wins!";
-                computerScore++;
-                document.getElementById("comp-score").innerText = computerScore;
-            } else {
-                resultText.innerText = "Error: I didn't see Rock, Paper, or Scissors!";
-            }
+            ball.position.z = Math.sign(ball.position.z) * (FIELD_L/2 - 150);
+            ballData.vz *= -0.8;
         }
-    </script>
+
+        checkCollision(p1);
+        checkCollision(p2);
+
+        function updateCamera(cam, car) {
+            let dx = ball.position.x - car.mesh.position.x;
+            let dz = ball.position.z - car.mesh.position.z;
+            let angleToBall = Math.atan2(dx, dz);
+
+            const CAM_DIST = 1100;
+            const CAM_HEIGHT = 450;
+
+            let targetX = car.mesh.position.x - Math.sin(angleToBall) * CAM_DIST;
+            let targetY = car.mesh.position.y + CAM_HEIGHT;
+            let targetZ = car.mesh.position.z - Math.cos(angleToBall) * CAM_DIST;
+            
+            cam.position.lerp(new THREE.Vector3(targetX, targetY, targetZ), 0.15);
+            cam.lookAt(ball.position);
+        }
+
+        updateCamera(cam1, p1);
+        updateCamera(cam2, p2);
+
+        let w = window.innerWidth / 2, h = window.innerHeight;
+        renderer.setViewport(0, 0, w, h); renderer.setScissor(0, 0, w, h); renderer.render(scene, cam1);
+        renderer.setViewport(w, 0, w, h); renderer.setScissor(w, 0, w, h); renderer.render(scene, cam2);
+    }
+
+    resetField();
+    animate();
+</script>
 </body>
 </html>
